@@ -1,0 +1,4 @@
+#ignore everything
+.idea
+.idea_modules
+target
