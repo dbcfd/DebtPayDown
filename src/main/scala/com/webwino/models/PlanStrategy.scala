@@ -37,8 +37,18 @@ class PayOneStrategy extends PlanStrategy {
 	def generatePlan(debts:List[Debt], extraPaymentAmount:Double) : IndexedSeq[PlanPayment] = {
 		//pick the debt to pay first
 		val payments:ArrayBuffer[PlanPayment] = ArrayBuffer() ++ debts map ( (debt:Debt) => PlanPayment(debt.minimumPayment, 0) )
-    val index = PlanStrategy.rng.nextInt(debts.size)
-		payments(index) = PlanPayment(payments(index).requiredPayment, extraPaymentAmount)
+    if(extraPaymentAmount > 0)
+    {
+      if(payments.size == 1)
+      {
+        payments(0) = PlanPayment(payments(0).requiredPayment, extraPaymentAmount)
+      }
+      else
+      {
+        val index = PlanStrategy.rng.nextInt(debts.size)
+		    payments(index) = PlanPayment(payments(index).requiredPayment, extraPaymentAmount)
+      }
+    }
     payments.toIndexedSeq
 	}
 }
@@ -60,12 +70,22 @@ class PayEqualToSomeStrategy extends PlanStrategy {
 	
 	def generatePlan(debts:List[Debt], extraPaymentAmount:Double) : IndexedSeq[PlanPayment] = {
 		val payments:ArrayBuffer[PlanPayment] = ArrayBuffer() ++ debts map ( (debt:Debt) => PlanPayment(debt.minimumPayment, 0) )
-		//pay some of the debts with an equal amount
-		val debtCount = PlanStrategy.rng.nextInt(debts.size)
-		val indices = Random.shuffle(debts.indices)
-		val debtsWithExtra = indices.take(debtCount)
-		val extra = extraPaymentAmount / debtCount
-		debtsWithExtra foreach ( (index:Int) => payments(index) = PlanPayment(payments(index).requiredPayment, extra) )
+    if(extraPaymentAmount > 0)
+    {
+      if(payments.size == 1)
+      {
+        payments(0) = PlanPayment(payments(0).requiredPayment, extraPaymentAmount)
+      }
+      else
+      {
+        //pay some of the debts with an equal amount
+        val debtCount = math.max(1, PlanStrategy.rng.nextInt(debts.size))
+        val indices = Random.shuffle(debts.indices)
+        val debtsWithExtra = indices.take(debtCount)
+        val extra = extraPaymentAmount / debtCount
+        debtsWithExtra foreach ( (index:Int) => payments(index) = PlanPayment(payments(index).requiredPayment, extra) )
+      }
+    }
 		payments.toIndexedSeq
 	}
 }
@@ -76,20 +96,30 @@ class PayRandomStrategy extends PlanStrategy {
 	
 	def generatePlan(debts:List[Debt], extraPaymentAmount:Double) : IndexedSeq[PlanPayment] = {
 		val payments:ArrayBuffer[PlanPayment] = ArrayBuffer() ++ debts map ( (debt:Debt) => PlanPayment(debt.minimumPayment, 0) )
-		val indices = Random.shuffle(debts.indices)
-		var remaining = extraPaymentAmount
-		indices foreach ( (index:Int) => {
-			val extra = {
-        if(remaining > 25.0) PlanStrategy.rng.nextDouble() * remaining
-        else remaining
+    if(extraPaymentAmount > 0)
+    {
+      if(payments.size == 1)
+      {
+        payments(0) = PlanPayment(payments(0).requiredPayment, extraPaymentAmount)
       }
-			payments(index) = PlanPayment(payments(index).requiredPayment, extra)
-			remaining -= extra
-		} )
-		if(remaining > 0) {
-      val index = PlanStrategy.rng.nextInt(payments.size)
-      val existingPayment = payments(index)
-      payments(index) = PlanPayment(existingPayment.requiredPayment, existingPayment.extraPayment + remaining)
+      else
+      {
+        val indices = Random.shuffle(debts.indices)
+        var remaining = extraPaymentAmount
+        indices foreach ( (index:Int) => {
+          val extra = {
+            if(remaining > 25.0) PlanStrategy.rng.nextDouble() * remaining
+            else remaining
+          }
+          payments(index) = PlanPayment(payments(index).requiredPayment, extra)
+          remaining -= extra
+        } )
+        if(remaining > 0) {
+          val index = PlanStrategy.rng.nextInt(payments.size)
+          val existingPayment = payments(index)
+          payments(index) = PlanPayment(existingPayment.requiredPayment, existingPayment.extraPayment + remaining)
+        }
+      }
     }
 		payments.toIndexedSeq
 	}
