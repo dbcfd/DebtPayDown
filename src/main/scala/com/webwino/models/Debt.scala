@@ -1,20 +1,6 @@
 package com.webwino.models
 
 /**
- * Hold a liability
- */
-class Liability(val amountOwed: Double, val periodInterestRate: Double) {
-  val interestAccrued = amountOwed * periodInterestRate
-  val payoffAmount = amountOwed + interestAccrued
-
-  def applyPayment(paymentAmount: Double): (Liability, Double) = {
-    val paymentApplied = math.min(payoffAmount, paymentAmount)
-    val nextAmountOwed = payoffAmount - paymentApplied
-    (new Liability(nextAmountOwed, periodInterestRate), paymentApplied)
-  }
-}
-
-/**
  * Hold a debt representation
  */
 object Debt {
@@ -27,10 +13,10 @@ object Debt {
   }
 }
 
-class Debt(val amountOwed: Double, val interestRate: Double, val minimumPayment: Double, val periodInterestRate: Double) {
-  private var liabilityOverTime: List[Liability] = List(new Liability(amountOwed, periodInterestRate))
+class Debt private (val amountOwed: Double, val interestRate: Double, val minimumPayment: Double, val periodInterestRate: Double) {
+  private var liabilityOverTime: List[Liability] = List[Liability](Liability(amountOwed, periodInterestRate))
   private def currentLiability: Liability = liabilityOverTime.head
-  private var paymentOverTime:List[Double] = List()
+  private var paymentOverTime:List[LiabilityPayment] = List()
 
   def payoffAmount: Double = currentLiability.payoffAmount
 
@@ -38,9 +24,17 @@ class Debt(val amountOwed: Double, val interestRate: Double, val minimumPayment:
 
   def isValidPayment(paymentAmount: Double): Boolean = paymentAmount >= minimumPayment
 
-  def applyPayment(paymentAmount: Double) {
-    val paymentApplied = currentLiability.applyPayment(paymentAmount)
-    liabilityOverTime = List(paymentApplied._1) ::: liabilityOverTime
-    paymentOverTime = List(paymentApplied._2) ::: paymentOverTime
+  def applyPayment(paymentAmount: Double) : Double = {
+    val paymentApplied = math.min(currentLiability.payoffAmount, paymentAmount)
+    paymentOverTime = List(LiabilityPayment(currentLiability, paymentApplied)) ::: paymentOverTime
+    liabilityOverTime = List(Liability(currentLiability, paymentApplied)) ::: liabilityOverTime
+    paymentAmount - paymentApplied
+  }
+
+  def applyAdditionalPayment(paymentAmount: Double) : Double = {
+    val paymentApplied = math.min(currentLiability.payoffAmount, paymentAmount)
+    paymentOverTime = List(LiabilityPayment(currentLiability, paymentApplied)) ::: paymentOverTime.tail
+    liabilityOverTime = List(Liability(currentLiability, paymentApplied)) ::: liabilityOverTime.tail
+    paymentAmount - paymentApplied
   }
 }

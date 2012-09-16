@@ -21,7 +21,7 @@ object Build extends sbt.Build {
 		Compile.scalatraScalate,
         Compile.akkaActor,
         Compile.jodaTime,
-		Test.scalatraSpecs2,
+		Test.specs2,
         Container.jettyWebApp,
         Container.akkaSlf4j,
         Container.slf4j,
@@ -35,11 +35,13 @@ object Dependencies {
   val resolutionRepos = Seq(
     ScalaToolsSnapshots,
     "Typesafe repo" at "http://repo.typesafe.com/typesafe/releases/",
-	"Sonatype OSS Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/"
+	"Sonatype OSS Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/",
+	"spray repo" at "http://repo.spray.cc/"
   )
 
   object V {
     val akka    = "2.0.2"
+	val specs2  = "1.12.1"
 	val scalatra = "2.2.0-SNAPSHOT"
 	val scalatraSpecs2 = "2.1.0-SNAPSHOT"
     val jetty   = "8.1.0.v20120127"
@@ -63,6 +65,7 @@ object Dependencies {
   }
 
   object Test {
+	val specs2      = "org.specs2"                %% "specs2"          % V.specs2  % "test"
 	val scalatraSpecs2 = "org.scalatra"			  %% "scalatra-specs2" % V.scalatraSpecs2 % "test"
   }
 

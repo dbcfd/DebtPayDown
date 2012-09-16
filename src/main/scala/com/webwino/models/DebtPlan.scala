@@ -9,6 +9,10 @@ object DebtPlan {
     plan.updateStrategy
     plan
   }
+  def apply(debts: List[Debt]) : DebtPlan = {
+    apply(debts, 0)
+  }
+
   def apply(plan:DebtPlan): DebtPlan = {
     val newPlan = new DebtPlan(plan.debts, plan.extraPaymentAmount)
     newPlan.strategies = plan.strategies
@@ -20,14 +24,14 @@ object DebtPlan {
 
 class DebtPlan private(val debts: List[Debt], val extraPaymentAmount: Double) {
   private var strategies: List[PlanStrategy] = List()
-  private var currentPaymentPlan: IndexedSeq[Double] = IndexedSeq()
+  private var currentPaymentPlan: IndexedSeq[PlanPayment] = IndexedSeq()
   private var currentStrategy: PlanStrategy = null
   private var currentDebts: List[Debt] = debts
 
   val amountOwed: Double = debts.foldLeft(0.0)( (amountSum:Double, debt) => amountSum + debt.payoffAmount)
 
   def updateStrategy {
-    if (debts.isEmpty) {
+    if (currentDebts.isEmpty) {
       currentPaymentPlan = IndexedSeq()
     }
     else {
@@ -37,17 +41,36 @@ class DebtPlan private(val debts: List[Debt], val extraPaymentAmount: Double) {
     }
   }
 
-  def applyStrategy {
+  def applyPayments( applyMethod: (Debt, PlanPayment) => Double ):(Boolean,Double) = {
     var needToUpdateStrategy = false
     var index:Int = 0
-    debts foreach ( debt => {
-      debt.applyPayment(currentPaymentPlan(index))
+    var paymentRemaining:Double = 0
+    currentDebts foreach ( debt => {
+      paymentRemaining += applyMethod(debt, currentPaymentPlan(index))
       if (debt.isPayedOff) needToUpdateStrategy = true
       index += 1
     })
-    if (needToUpdateStrategy) {
+    (needToUpdateStrategy, paymentRemaining)
+  }
+
+  def applyStrategy {
+    var needToUpdateStrategyAndPaymentRemaining = applyPayments( (debt:Debt, payment:PlanPayment) => {
+      debt.applyPayment(payment.totalPayment)
+    })
+    while (needToUpdateStrategyAndPaymentRemaining._1) {
       currentDebts = debts filter ((debt: Debt) => !debt.isPayedOff)
-      updateStrategy
+      needToUpdateStrategyAndPaymentRemaining = (!currentDebts.isEmpty, needToUpdateStrategyAndPaymentRemaining._2)
+      if (needToUpdateStrategyAndPaymentRemaining._1)
+      {
+        updateStrategy
+        var extraPaymentRemaining = needToUpdateStrategyAndPaymentRemaining._2
+        needToUpdateStrategyAndPaymentRemaining = applyPayments( (debt:Debt, payment:PlanPayment) => {
+          val paymentToApply = math.max(0, extraPaymentRemaining - payment.extraPayment)
+          val paymentRemaining = debt.applyAdditionalPayment(paymentToApply)
+          extraPaymentRemaining += paymentRemaining
+          paymentRemaining
+        })
+      }
     }
   }
 
